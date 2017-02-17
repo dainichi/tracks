@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 import GHC.Real
+import Data.Monoid
 
 data Vec a = Vec a a deriving (Show)
 data UVec a = UVec a a deriving (Show)
@@ -21,7 +22,7 @@ instance Num a => RotPos (UVec a) (Vec a) where
 data TRTrack t r = TRTrack t r deriving (Show)
 
 instance (Monoid t, Monoid r, RotPos r t) => Monoid (TRTrack t r) where
-    TRTrack t1 r1 `mappend` TRTrack t2 r2 = TRTrack(t1 `mappend` (r1 <**> t2))(r1 `mappend` r2)
+    TRTrack t1 r1 `mappend` TRTrack t2 r2 = TRTrack(t1 <> (r1 <**> t2))(r1 <> r2)
     mempty = TRTrack mempty mempty
 
 class Monoid t => Piece t where
@@ -92,10 +93,27 @@ instance Piece (TRTrack (Vec RI) Angle) where
     l = TRTrack (Vec iu (1 - iu))(Angle 1)
     r = TRTrack (Vec iu (iu - 1))(Angle (-1))
 
+data II = II Int Int
+
+instance Show II where
+    show (II u s) =  if u == 0 
+                     then (if s == 0 then "0" else "") 
+                     else show u ++ (if s == 0 then "" else ((if s >=0 && u /=0 then "+" else "") ++
+                                     (if s == 1 then "" else show s) ++ "sqrt2"))
+
+
+
+
 mine::Piece t => [t]
 mine = [s,d,h,l,l,l,l,h,s,l,l,r,l,s,l,l,r,r,r,r,r,l,r,r,r,l,s,h,h,d,l,l,h,l,r,l,l,h,l,r,l,s,l,l,l,l,r,l,l,l,l,l,l,l,r,s]
+
+guru::Piece t => [t]
+guru = [d,l,l,l,d,r,l,l,r,l,l,r,l,l,r,l,l,r,l,l,l,r,l,s,l,s,l,l,s,l,s,l,l,l,s,l,l,l,l,l,l,l,s,s,l]
 
 doubleResult = mconcat (mine::[TRTrack (Vec Double)(UVec Double)])
 riResult = mconcat (mine::[TRTrack (Vec RI)(UVec RI)])
 atResult = mconcat (mine::[TRTrack (Vec RI) Angle])
 
+doubleGuru = mconcat (guru::[TRTrack (Vec Double)(UVec Double)])
+riGuru = mconcat (guru::[TRTrack (Vec RI)(UVec RI)])
+atGuru = mconcat (guru::[TRTrack (Vec RI) Angle])
