@@ -1,0 +1,55 @@
+%!PS
+
+/len {50} def
+/wid {100} def %from center
+
+
+/2len {len 2 mul} def
+/-2len {2len neg} def
+/-wid {wid neg} def
+
+
+/S {
+newpath
+len wid moveto
+0 wid lineto
+0 -wid lineto
+len -wid lineto
+2 setlinewidth
+stroke
+len 0 translate
+} def
+
+/L {
+newpath
+0 wid moveto
+0 -wid lineto
+2 setlinewidth
+stroke
+0 2len 2len wid sub 270 300 arc
+stroke
+0 2len 2len wid add 270 300 arc
+stroke
+0 2len translate
+30 rotate
+0 -2len translate
+} def
+
+/R {
+newpath
+0 wid moveto
+0 -wid lineto
+2 setlinewidth
+stroke
+0 -2len 2len wid sub 60 90 arc
+stroke
+0 -2len 2len wid add 60 90 arc
+stroke
+0 -2len translate
+330 rotate
+0 2len translate
+} def
+
+400 200 translate
+L L L L S L L L L S L L L L S 
+showpage
