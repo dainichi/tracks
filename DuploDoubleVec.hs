@@ -13,13 +13,11 @@ instance DuploImpl (TRTrack (Vec Double)(UVec Double)) where
     closed (TRTrack (Vec a b) (UVec c d)) =
         abs a < 0.01 && abs b < 0.01 && abs(c-1) < 0.01 && abs d < 0.01
 
-closedPerm::BankersDequeue DuploPiece -> Bool
 closedPerm tdq = closed(mconcat (map impl (toList tdq)::[TRTrack (Vec Double)(UVec Double)]))
 
 printSolution s = concatMap show (toList s) ++ "\n"
 
-main = let trs c s = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S))
-           pr c s = let t = trs c s
+main = let pr c s = let t = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S)::[BankersDequeue DuploPiece])
                     in do
                         putStrLn $ show (12+c) ++ show L ++ ", " ++ show c ++ show R ++ ", " ++ show s ++ show S ++ ", " ++ show (length t) ++ " solutions"
                         putStr (concatMap printSolution t)

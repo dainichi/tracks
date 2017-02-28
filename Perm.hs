@@ -10,11 +10,12 @@ lc xs ys =
                 ord -> ord
         _ -> EQ
 
+--a permutation algorithm which only generates the lexicographically smallest rotation, i.e. a cononical form representing the cyclic permutation. It makes sure that no subsequence is lexicographically smaller than the whole sequence generated so far. nym (not yet matched) is the remainder of the currently generated sequence when removing the longest subsequence currently generated which equals a prefix of the currently generated sequence. I have not rigidly proved correctness.
 perm acc nym [] = 
     case lc acc nym of
         LT -> []
         EQ -> [acc]
-        _ -> error $ show acc ++ " " ++ show nym
+--        _ -> error $ show acc ++ " " ++ show nym
 perm acc nym xs = do
     x <- nub xs
     case popFront nym of
@@ -25,7 +26,8 @@ perm acc nym xs = do
                 GT -> let pb = pushBack acc x in perm pb pb (delete x xs)
         _ -> let pb = pushBack acc x in perm pb pb (delete x xs)
 
-permutation::(Ord a,Show (q a),Dequeue q)=>[a]->[q a]
+--permutation::(Ord a,Show (q a),Dequeue q)=>[a]->[q a]
+permutation::(Ord a,Dequeue q)=>[a]->[q a]
 permutation = perm empty empty
 
 

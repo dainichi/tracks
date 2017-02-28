@@ -13,13 +13,11 @@ instance DuploImpl (TRTrack IntTra30 IntAng30) where
     closed (TRTrack (IntTra30 a b c d) (IntAng30 e)) =
         a==0 && b==0 && c==0 && d==0 && e `mod` 12 == 0
 
-closedPerm::BankersDequeue DuploPiece -> Bool
 closedPerm tdq = closed(mconcat (map impl (toList tdq)::[TRTrack IntTra30 IntAng30]))
 
 printSolution s = concatMap show (toList s) ++ "\n"
 
-main = let trs c s = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S))
-           pr c s = let t = trs c s
+main = let pr c s = let t = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S)::[BankersDequeue DuploPiece])
                     in do
                         putStrLn $ show (12+c) ++ show L ++ ", " ++ show c ++ show R ++ ", " ++ show s ++ show S ++ ", " ++ show (length t) ++ " solutions"
                         putStr (concatMap printSolution t)
