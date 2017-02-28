@@ -1,7 +1,6 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, PartialTypeSignatures #-}
 import Perm(permutation)
 import Data.Dequeue(BankersDequeue)
-import Data.Foldable(concatMap,toList)
 import Duplo(DuploPiece(S,L,R),DuploImpl,impl,closed)
 import Vec
 import Tra
@@ -13,11 +12,11 @@ instance DuploImpl (TRTrack (Vec Double)(UVec Double)) where
     closed (TRTrack (Vec a b) (UVec c d)) =
         abs a < 0.01 && abs b < 0.01 && abs(c-1) < 0.01 && abs d < 0.01
 
-closedPerm tdq = closed(mconcat (map impl (toList tdq)::[TRTrack (Vec Double)(UVec Double)]))
+closedPerm tdq = closed(foldMap (impl::_->TRTrack (Vec Double)(UVec Double)) tdq)
 
-printSolution s = concatMap show (toList s) ++ "\n"
+printSolution s = foldMap show s ++ "\n"
 
-main = let pr c s = let t = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S)::[BankersDequeue DuploPiece])
+main = let pr c s = let t = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S)::[BankersDequeue _])
                     in do
                         putStrLn $ show (12+c) ++ show L ++ ", " ++ show c ++ show R ++ ", " ++ show s ++ show S ++ ", " ++ show (length t) ++ " solutions"
                         putStr (concatMap printSolution t)
