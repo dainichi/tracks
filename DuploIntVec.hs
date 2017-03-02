@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, PartialTypeSignatures #-}
-import Perm(permutation)
+import Perm(permutation,DupList(..))
 import Data.Dequeue(BankersDequeue)
 import Duplo(DuploPiece(S,L,R),DuploImpl,impl,closed)
 import IntVec30deg
@@ -16,10 +16,12 @@ instance DuploImpl (TRTrack IntTra30 IntAng30) where
 
 closedPerm tdq = closed(foldMap (impl::_->TRTrack IntTra30 IntAng30) tdq)
 
-printSolution s = foldMap show s ++ "\n"
+printSolution s = do
+                    mapM_ (putStr . show) s
+                    putStr "\n"
 
-main = let pr c s = let t = filter closedPerm (permutation (replicate (12+c) L ++ replicate c R ++ replicate s S)::[BankersDequeue _])
+main = let pr c s = let t = filter closedPerm (permutation (DupList [(L, 12+c),(R,c),(S,s)])::[BankersDequeue _])
                     in do
+                        mapM_ printSolution t
                         putStrLn $ show (12+c) ++ show L ++ ", " ++ show c ++ show R ++ ", " ++ show s ++ show S ++ ", " ++ show (length t) ++ " solutions"
-                        putStr (concatMap printSolution t)
        in sequence [ pr c s | c <- [3,2..0] , s <- [5,4..0]] 
