@@ -66,8 +66,8 @@ def get_piece(num):
         print("no track by number " + num)
         exit()
 
-pieces = "1" * 15 + "2" * 3 + "3" * 5
-perms = perm((), (), (",".join(pieces)))
+pieces = (1,) * 15 + (2,) * 3 + (3,) * 5
+perms = perm((), (), pieces)
 
 for permutation in perms:
     accumulate = Track(Translation(0, 0, 0, 0), 0)
