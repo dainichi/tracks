@@ -20,8 +20,9 @@ def perm(accumulator, match_index, li):
 def lex_min_rot_perm(li):
     for i in range(0, len(li)):
         elem = li[i]
-        for p in perm((elem,),0,li[:i] + li[i + i:]):
-            yield p
+        if elem not in li[:i]:
+            for p in perm((elem,),0,li[:i] + li[i + 1:]):
+                yield p
 
 #this strange representation seems necessary to represent all coordinates with integers.
 class Translation:
