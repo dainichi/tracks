@@ -1,22 +1,28 @@
-def eq_tup(acc, nym):
-    return nym == () or (acc[0] == nym[0] and eq_tup(acc[1:], nym[1:]))
+def cyclic(li, index):
+    c = 0
+    for i in range(index, len(li)):
+        if li[c] != li[i]:
+            return False
+        c = c + 1
+    return True
 
-
-def perm(acc, nym, li):
+def perm(accumulator, match_index, li):
     if li == ():
-        if eq_tup(acc, nym):
-            yield acc
+        if match_index == 0 or cyclic(accumulator, match_index):
+            yield accumulator
     else:
         for i in range(0, len(li)):
             elem = li[i]
-            if elem not in li[:i] and not (len(nym) > 0 and elem < nym[0]):
-                if len(nym) > 0 and elem == nym[0]:
-                    nnym = nym[1:]
-                else:
-                    nnym = acc[:]
-                for p in perm(acc + (elem,), nnym + (elem,), li[:i] + li[i + 1:]):
+            if elem not in li[:i] and elem >= accumulator[match_index]:
+                for p in perm(accumulator + (elem,), match_index + 1 if elem == accumulator[match_index] else 0, li[:i] + li[i + 1:]):
                     yield p
 
+def lex_min_rot_perm(li):
+    for i in range(0, len(li)):
+        elem = li[i]
+        if elem not in li[:i]:
+            for p in perm((elem,),0,li[:i] + li[i + 1:]):
+                yield p
 
 #this strange representation seems necessary to represent all coordinates with integers.
 class Translation:
@@ -67,7 +73,7 @@ def get_piece(num):
         exit()
 
 pieces = (1,) * 15 + (2,) * 3 + (3,) * 5
-perms = perm((), (), pieces)
+perms = lex_min_rot_perm(pieces)
 
 for permutation in perms:
     accumulate = Track(Translation(0, 0, 0, 0), 0)
