@@ -20,14 +20,18 @@ instance Show IntTra30 where
         "(" ++ show a ++ " " ++ show b ++ " " ++ show c ++ " " ++ show d ++ ")=(" ++ 
                                 pr (a+b) (c-d) ++ "," ++ pr (c+d) (a-b) ++ ")"
 
+instance Semigroup IntTra30 where
+    IntTra30 a1 b1 c1 d1 <> IntTra30 a2 b2 c2 d2 = IntTra30 (a1+a2)(b1+b2)(c1+c2)(d1+d2)
+
 instance Monoid IntTra30 where
-    IntTra30 a1 b1 c1 d1 `mappend` IntTra30 a2 b2 c2 d2 = IntTra30 (a1+a2)(b1+b2)(c1+c2)(d1+d2)
     mempty = IntTra30 0 0 0 0
         
 newtype IntAng30 = IntAng30 Int deriving (Show)
 
+instance Semigroup IntAng30 where
+    IntAng30 a <> IntAng30 b = IntAng30 (a+b)
+
 instance Monoid IntAng30 where
-    IntAng30 a `mappend` IntAng30 b = IntAng30 (a+b)
     mempty = IntAng30 0
 
 instance RotPos IntAng30 IntTra30 where
