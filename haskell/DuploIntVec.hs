@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, PartialTypeSignatures #-}
-import Perm(necklaces,DupList(..))
+import Perm(necklaces,Bag(..))
 import Data.Dequeue(BankersDequeue)
 import Duplo(DuploPiece(S,L,R),DuploImpl,impl,closed)
 import IntVec30deg
@@ -23,7 +23,7 @@ printPieceList pieces = do
 main = 
    let printSolutions rightPieces straightPieces = 
         let leftPieces = rightPieces + 12
-            closedPieceLists = filter closedPieceList (necklaces (DupList [(L, leftPieces),(R,rightPieces),(S,straightPieces)])::[BankersDequeue _])
+            closedPieceLists = filter closedPieceList (necklaces (Bag [(L, leftPieces),(R,rightPieces),(S,straightPieces)])::[BankersDequeue _])
         in do mapM_ printPieceList closedPieceLists
               mapM_ putStr [show leftPieces, show L, ", ", show rightPieces, show R, ", ", show straightPieces, show S, ", ", show (length closedPieceLists), " solutions\n"]
    in sequence_ [ printSolutions rightPieces straightPieces | rightPieces <- [3,2..0] , straightPieces <- [5,4..0]] 

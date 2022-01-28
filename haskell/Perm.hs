@@ -2,6 +2,7 @@ module Perm where
 import Data.Dequeue (empty, popFront, pushBack, Dequeue)
 import Data.List (nub, delete)
 
+--the class represents lists/bags that allow an operation this returns distinct elements paired with the rest. Nub is the traditional name to get distinct elements
 class NubDel f where
     nubDel::Eq a => f a -> [(a, f a)]
 
@@ -10,13 +11,13 @@ instance NubDel [] where
                 x <- nub l
                 return (x, delete x l)
 
-newtype DupList a = DupList [(a,Int)] deriving (Show)
+newtype Bag a = Bag [(a,Int)] deriving (Show)
 
-instance NubDel DupList where
-    nubDel (DupList []) = []
-    nubDel (DupList ((x,1):l)) = (x,DupList l):map (\(y,DupList m) -> (y, DupList ((x,1):m))) (nubDel (DupList l))
-    nubDel (DupList ((x,n):l)) | n > 0 = (x,DupList ((x,n-1):l)): map (\(y,DupList m) -> (y, DupList ((x,n):m))) (nubDel (DupList l))
-                               | n == 0 = nubDel (DupList l)
+instance NubDel Bag where
+    nubDel (Bag []) = []
+    nubDel (Bag ((x,1):l)) = (x,Bag l):map (\(y,Bag m) -> (y, Bag ((x,1):m))) (nubDel (Bag l))
+    nubDel (Bag ((x,n):l)) | n > 0 = (x,Bag ((x,n-1):l)): map (\(y,Bag m) -> (y, Bag ((x,n):m))) (nubDel (Bag l))
+                               | n == 0 = nubDel (Bag l)
 
 
 cyclic xs ys = 
