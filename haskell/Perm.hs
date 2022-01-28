@@ -39,7 +39,7 @@ perm acc nym aeqn l =
                     EQ -> perm (pushBack acc x) (pushBack nn x) False xx
                     GT -> let pb = pushBack acc x in perm pb pb True xx
 
-permutation l = do
+necklaces l = do
                     (x,xx) <- nubDel l
                     let pex = pushBack empty x
                     perm pex pex True xx

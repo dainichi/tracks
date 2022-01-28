@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, PartialTypeSignatures #-}
-import Perm(permutation,DupList(..))
+import Perm(necklaces,DupList(..))
 import Data.Dequeue(BankersDequeue)
 import Duplo(DuploPiece(S,L,R),DuploImpl,impl,closed)
 import IntVec30deg
@@ -14,14 +14,16 @@ instance DuploImpl (TRTrack IntTra30 IntAng30) where
 
 --note: foldMap is a concatMap generalized to Foldable, so we can handle Dequeues without converting to lists.
 
-closedPerm tdq = closed(foldMap (impl::_->TRTrack IntTra30 IntAng30) tdq)
+closedPieceList pieceList = closed(foldMap (impl::_->TRTrack IntTra30 IntAng30) pieceList)
 
-printSolution s = do
-                    mapM_ (putStr . show) s
+printPieceList pieces = do
+                    mapM_ (putStr . show) pieces
                     putStr "\n"
 
-main = let pr c s = let t = filter closedPerm (permutation (DupList [(L, 12+c),(R,c),(S,s)])::[BankersDequeue _])
-                    in do
-                        mapM_ printSolution t
-                        putStrLn $ show (12+c) ++ show L ++ ", " ++ show c ++ show R ++ ", " ++ show s ++ show S ++ ", " ++ show (length t) ++ " solutions"
-       in sequence [ pr c s | c <- [3,2..0] , s <- [5,4..0]] 
+main = 
+   let printSolutions rightPieces straightPieces = 
+        let leftPieces = rightPieces + 12
+            closedPieceLists = filter closedPieceList (necklaces (DupList [(L, leftPieces),(R,rightPieces),(S,straightPieces)])::[BankersDequeue _])
+        in do mapM_ printPieceList closedPieceLists
+              mapM_ putStr [show leftPieces, show L, ", ", show rightPieces, show R, ", ", show straightPieces, show S, ", ", show (length closedPieceLists), " solutions\n"]
+   in sequence_ [ printSolutions rightPieces straightPieces | rightPieces <- [3,2..0] , straightPieces <- [5,4..0]] 
