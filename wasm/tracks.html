@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Track Generator with Paper.js</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.0/paper-full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .controls {
+      padding: 10px;
+      border-bottom: 2px solid #ccc;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .controls label {
+      font-size: 14px;
+    }
+
+    .content {
+      display: flex;
+      flex-grow: 1;
+      overflow: hidden;
+      min-width: 0;
+      position: relative;
+    }
+
+    #list {
+      flex: 0 0 auto;
+      width: 28ch;
+      min-width: 10ch;
+      max-width: none;
+      padding: 10px;
+      border-right: 2px solid #ccc;
+      overflow: auto;
+      max-height: calc(100vh - 60px);
+      user-select: none;
+    }
+
+    .list-item {
+      padding: 5px;
+      cursor: pointer;
+      word-break: break-all;
+    }
+
+    .list-item:hover {
+      background: #eee;
+    }
+
+    .selected {
+      background: #ddd;
+      font-weight: bold;
+    }
+
+    #resizer {
+      width: 4px;
+      cursor: ew-resize;
+      background: #ccc;
+      height: 100%;
+      z-index: 1;
+    }
+
+    #canvas-container {
+      flex-grow: 1;
+      min-width: 0;
+      height: 100%;
+    }
+
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #track-info {
+      margin-left: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    #drag-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      cursor: ew-resize;
+      z-index: 9999;
+      display: none;
+    }
+
+    #generate-progress {
+      margin-left: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">Loading WebAssembly module...</div>
+
+  <div class="controls">
+    <label>
+      Curved pieces:
+      <input id="curved-input" type="number" min="12" max="24" value="18" style="width: 4em;" />
+    </label>
+    <label>
+      Straight pieces:
+      <input id="straight-input" type="number" min="0" max="12" value="5" style="width: 4em;" />
+    </label>
+    <button id="generate-btn" disabled>Generate Tracks</button>
+    <span id="track-info"></span>
+    <span id="generate-progress" class="hidden"></span>
+  </div>
+
+  <div class="content">
+    <div id="list"></div>
+    <div id="resizer"></div>
+    <canvas id="canvas-container"></canvas>
+  </div>
+
+  <div id="drag-overlay"></div>
+
+  <script>
+    paper.setup('canvas-container');
+
+    const listContainer = document.getElementById('list');
+    const generateBtn = document.getElementById('generate-btn');
+    const trackInfo = document.getElementById('track-info');
+    const generateProgress = document.getElementById('generate-progress');
+    const loadingIndicator = document.getElementById('loading');
+
+    const curvedInput = document.getElementById('curved-input');
+    const straightInput = document.getElementById('straight-input');
+
+    let tracks = [];
+    let worker = null;
+    let pendingTracks = [];
+    let renderQueued = false;
+    let isGenerating = false;
+    console.log("ig false 1");
+    let trackCount = 0;
+
+    const length = 50;
+    const width = 24;
+    //const width = 200;
+    const w2 = width / 2;
+    const l2 = length * 2;
+    const l2mw2 = length * 2 - w2;
+    const l2pw2 = length * 2 + w2;
+
+    // Initialize the worker
+    function initWorker() {
+      if (worker) {
+        worker.terminate();
+      }
+
+      try {
+        worker = new Worker('tracks-worker.js');
+        console.log("Worker created successfully");
+        
+        worker.onmessage = function(e) {
+          //console.log("Message from worker:", e.data);
+          const data = e.data;
+          
+          if (data.type === 'ready') {
+            loadingIndicator.classList.add('hidden');
+            generateBtn.disabled = false;
+          } 
+          else if (data.type === 'track') {
+            pendingTracks.push(data.track);
+            trackCount++;
+            generateProgress.textContent = `Generated ${trackCount} tracks...`;
+            
+            if (!renderQueued) {
+              renderQueued = true;
+              requestAnimationFrame(renderBufferedTracks);
+            }
+          }
+          else if (data.type === 'error') {
+            console.error('Worker error:', data.message);
+            trackInfo.textContent = "Error: " + data.message;
+            isGenerating = false;
+	    console.log("ig false 2");
+            generateBtn.disabled = false;
+            generateProgress.classList.add('hidden');
+          }
+	  else if (data.type === 'done') {
+	    isGenerating = false;
+	    console.log("ig false 5");
+            generateBtn.disabled = false;
+            generateProgress.classList.add('hidden');
+ 	  }
+        };
+
+        worker.onerror = function(error) {
+          console.error('Worker error:', error);
+          trackInfo.textContent = "Worker error: " + error.message;
+          loadingIndicator.textContent = "Error loading worker: " + error.message;
+          isGenerating = false;
+	  console.log("ig false 3");
+          generateBtn.disabled = false;
+          generateProgress.classList.add('hidden');
+        };
+      } catch (e) {
+        console.error("Error creating worker:", e);
+        loadingIndicator.textContent = "Error creating worker: " + e.message;
+      }
+    }
+
+    // Initialize the worker when the page loads
+    initWorker();
+
+    generateBtn.addEventListener('click', function () {
+      const curved = parseInt(curvedInput.value);
+      const straight = parseInt(straightInput.value);
+      const maxLimit = 30;
+
+      if (
+        isNaN(curved) || curved < 12 || curved > 24 ||
+        isNaN(straight) || straight < 0 || straight > 12
+      ) {
+        trackInfo.textContent = "Invalid input: please enter between 12 and 24 curved pieces and bewteen 0 and 12 straight pieces";
+        return;
+      }
+
+      if (isGenerating) {
+	worker.terminate();
+        // If already generating, restart the worker
+        //initWorker();
+	console.log("terminated worker");
+        //trackInfo.textContent = "Restarted generation";
+      }
+
+      isGenerating = true;
+      console.log("ig true");
+      tracks = [];
+      trackCount = 0;
+      listContainer.innerHTML = "";
+      trackInfo.textContent = "Started generating tracks";
+      generateProgress.textContent = "Generated 0 tracks...";
+      generateProgress.classList.remove('hidden');
+      generateBtn.disabled = true;
+
+      // Send the generation request to the worker
+      worker.postMessage({ 
+        type: 'generate', 
+        curved: Math.floor((curved - 12)/2), 
+        straight: straight 
+      });
+    });
+
+    function renderBufferedTracks() {
+      const batchSize = Math.min(pendingTracks.length, 100); // Process up to 100 tracks at once
+      
+      for (let i = 0; i < batchSize; i++) {
+        const text = pendingTracks[i];
+        tracks.push(text);
+
+        const div = document.createElement('div');
+        div.className = "list-item";
+        div.textContent = text;
+        div.onclick = () => {
+          highlightSelection(div);
+          drawTrack(text);
+        };
+        listContainer.appendChild(div);
+      }
+
+      // Remove processed tracks from the pending queue
+      pendingTracks.splice(0, batchSize);
+      
+      trackInfo.textContent = `Generated ${tracks.length} tracks`;
+
+      if (tracks.length > 0 && !document.querySelector('.selected')) {
+        document.querySelector('.list-item')?.click();
+      }
+
+      renderQueued = false;
+
+      if (pendingTracks.length > 0) {
+        renderQueued = true;
+        requestAnimationFrame(renderBufferedTracks);
+      } /* else if (isGenerating && tracks.length > 0) {
+        isGenerating = false;
+	console.log("ig false 4");
+        generateBtn.disabled = false;
+        generateProgress.classList.add('hidden');
+      }*/
+    }
+
+    function highlightSelection(selectedItem) {
+      document.querySelectorAll('.list-item').forEach(item => item.classList.remove('selected'));
+      selectedItem.classList.add('selected');
+    }
+
+    function drawTrack(track) {
+      paper.project.clear();
+      let a = 0;
+      let p = new paper.Point(0, 0);
+
+      track.split('').forEach(piece => {
+        switch (piece) {
+          case "L":
+            let uL = new paper.Point(Math.cos(a), -Math.sin(a));
+            let urL = new paper.Point(-Math.sin(a), -Math.cos(a));
+            let blL = p.add(urL.multiply(w2));
+            let brL = p.add(urL.multiply(-w2));
+            let cL = p.add(urL.multiply(l2));
+            let m_aL = a + Math.PI / 12;
+            let m_arL = new paper.Point(-Math.sin(m_aL), -Math.cos(m_aL));
+            let mlL = cL.add(m_arL.multiply(-l2mw2));
+            let mrL = cL.add(m_arL.multiply(-l2pw2));
+            let new_aL = a + Math.PI / 6;
+            let new_arL = new paper.Point(-Math.sin(new_aL), -Math.cos(new_aL));
+            let flL = cL.add(new_arL.multiply(-l2mw2));
+            let frL = cL.add(new_arL.multiply(-l2pw2));
+            new paper.Path.Line({ from: flL, to: frL, strokeColor: 'black', strokeWidth: 2 });
+            new paper.Path.Arc({ from: blL, through: mlL, to: flL, strokeColor: 'black', strokeWidth: 2 });
+            new paper.Path.Arc({ from: brL, through: mrL, to: frL, strokeColor: 'black', strokeWidth: 2 });
+            p = cL.add(new_arL.multiply(-l2));
+            a = new_aL;
+            break;
+
+          case "R":
+            let uR = new paper.Point(Math.cos(a), -Math.sin(a));
+            let urR = new paper.Point(-Math.sin(a), -Math.cos(a));
+            let blR = p.add(urR.multiply(w2));
+            let brR = p.add(urR.multiply(-w2));
+            let cR = p.add(urR.multiply(-l2));
+            let m_aR = a - Math.PI / 12;
+            let m_arR = new paper.Point(-Math.sin(m_aR), -Math.cos(m_aR));
+            let mlR = cR.add(m_arR.multiply(l2pw2));
+            let mrR = cR.add(m_arR.multiply(l2mw2));
+            let new_aR = a - Math.PI / 6;
+            let new_arR = new paper.Point(-Math.sin(new_aR), -Math.cos(new_aR));
+            let flR = cR.add(new_arR.multiply(l2pw2));
+            let frR = cR.add(new_arR.multiply(l2mw2));
+            new paper.Path.Line({ from: flR, to: frR, strokeColor: 'black', strokeWidth: 2 });
+            new paper.Path.Arc({ from: blR, through: mlR, to: flR, strokeColor: 'black', strokeWidth: 2 });
+            new paper.Path.Arc({ from: brR, through: mrR, to: frR, strokeColor: 'black', strokeWidth: 2 });
+            p = cR.add(new_arR.multiply(l2));
+            a = new_aR;
+            break;
+
+          case "S":
+            let uS = new paper.Point(Math.cos(a), -Math.sin(a));
+            let urS = new paper.Point(-Math.sin(a), -Math.cos(a));
+            let blS = p.add(urS.multiply(w2));
+            let brS = p.add(urS.multiply(-w2));
+            let flS = blS.add(uS.multiply(length));
+            let frS = brS.add(uS.multiply(length));
+            new paper.Path.Line({ from: flS, to: frS, strokeColor: 'black', strokeWidth: 2 });
+            new paper.Path.Line({ from: blS, to: flS, strokeColor: 'black', strokeWidth: 2 });
+            new paper.Path.Line({ from: brS, to: frS, strokeColor: 'black', strokeWidth: 2 });
+            p = p.add(uS.multiply(length));
+            break;
+        }
+      });
+
+      fitToCanvas();
+    }
+
+    function fitToCanvas() {
+      const bounds = paper.project.activeLayer.bounds;
+      if (bounds.width === 0 || bounds.height === 0) return;
+      paper.view.zoom = 1;
+      paper.view.center = paper.view.bounds.center;
+      const padding = 0.9;
+      const scale = Math.min(
+        (paper.view.size.width / bounds.width) * padding,
+        (paper.view.size.height / bounds.height) * padding
+      );
+      paper.view.zoom = scale;
+      paper.view.center = bounds.center;
+    }
+
+    function adjustCanvasSize() {
+      const canvas = document.getElementById('canvas-container');
+      const listContainer = document.getElementById('list');
+      const contentWidth = document.querySelector('.content').clientWidth;
+      const contentHeight = document.querySelector('.content').clientHeight;
+      const availableWidth = contentWidth - listContainer.offsetWidth;
+      canvas.width = availableWidth;
+      canvas.height = contentHeight;
+      paper.view.viewSize = new paper.Size(availableWidth, contentHeight);
+      if (paper.project && paper.project.activeLayer.bounds.width > 0) {
+        fitToCanvas();
+      }
+    }
+
+window.addEventListener('resize', adjustCanvasSize);
+
+(function enableListResize() {
+  const resizer = document.getElementById('resizer');
+  const list = document.getElementById('list');
+  const overlay = document.getElementById('drag-overlay');
+
+  let isDragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  resizer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startWidth = list.offsetWidth;
+    overlay.style.display = 'block';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const delta = e.clientX - startX;
+    list.style.width = `${startWidth + delta}px`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      overlay.style.display = 'none';
+      adjustCanvasSize();
+    }
+  });
+})();
+  </script>
+</body>
+</html>
